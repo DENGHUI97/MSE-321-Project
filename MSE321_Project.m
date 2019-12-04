@@ -100,7 +100,7 @@ ElectricityWorkPV = n_PV*0.5*A;
 HeatGeneratedPV = (1-n_PV)*n_heatAmbient*0.5*A;
 Qloss3 = zeros(24,1);
 for i =1:1:24
-    Qloss3(i) =  UA*(T_inside(i)-10);
+    Qloss3(i) =  UA*(T_inside(i)-T_outside(i));
 end
 
 HeatEnergyPVinDay = HeatGeneratedPV*12;  %etotal energy per day of a PV
@@ -108,7 +108,8 @@ Mass_TES = HeatEnergyPVinDay/h_sl*SF;    %the mass of PCM material
 PCM_Price = Mass_TES*PCMcost;            % cost of PCM material
 PCM_Manu_Price =manufactPCMcost*Mass_TES/rho; %cost of manufacturing PCM
 PV_Price = A*costPV;                     %cost of solar panel
-ElectricityEnergyPVinDayTime= ElectricityWorkPV*12;
+
+ElectricityEnergyPVinDayTime= ElectricityWorkPV*12;%electricity energy generated in a day
 
 %Coefficient of heat pump
 COP_HP_day = COP_Carnot/(1- (10+273.2)/(20+273.2));
@@ -118,21 +119,37 @@ WorkCompressor3 = zeros(24,1);
 for i = 1:1:24
     WorkCompressor3(i) = Qloss3(i)/COP_HP_day;
 end
-WorkCompressor3PerDayTime = sum(WorkCompressor3,'All');
-WorkCompressorSc3Tot = WorkCompressor3PerDayTime*days;
-%money required to consume electricity for the heat pump is
-ElectricMoney3 = WorkCompressorSc3Tot*costElectricity;
+%The total work of the heatpump in a day is
+WorkCompressor3PerDay = sum(WorkCompressor3,'All');
+%The total work of the heatpump in 8months
+WorkCompressorSc3Tot = WorkCompressor3PerDay*days;
 %The cost of operating the heater
 HP_Sc3_Money=  WorkCompressorSc3Tot*costHP;
-%The money gain from generating electricity perday from the PV
-MoneyElectricGainPerDay = ElectricityEnergyPVinDayTime*costElectricity*days;
-DeltaElectrical = MoneyElectricGainPerDay;
 
-for i = 1:1:11
-   DeltaElectrical(i) = ElectricMoney3 - MoneyElectricGainPerDay(i);
-end
-%For a year the annual cost for electricity is
-ElectricMoneySc3Tot = DeltaElectrical*days;
+%The electricity cost of the heater in 8 months is:
+%EnergyConsumption3 = WorkCompressor3PerDay*hours;
+ElectricMoney3 = WorkCompressorSc3Tot*costElectricity;
+
+%Capital Cost
+CapitalCostScenario3 = PCM_Price +PCM_Manu_Price+PV_Price+ HP_Sc3_Money;
+
+%The electricity gain from generating electricity perday from the PV in a
+%day
+ElectricityGenerated = WorkCompressor3PerDay -ElectricityEnergyPVinDayTime;
+%The amount of electricity sold to network
+MoneyElectricityGain =  ElectricityGenerated*days;
+%NetAnnualTurnOverRate =  Cost -Income 
+% NetAnnualTurnOverRate = CapitalCostScenario3 -MoneyElectricityGain;
+
+%plot
+figure
+plot(A, CapitalCostScenario3, A,MoneyElectricityGain)
+xlabel('PV Panel Areas (m2)')
+ylabel('Cost')
+legend('Capital Cost', 'Net Annual Turnover Rate')
+hold on
+
+
 
 
 
